@@ -1,0 +1,55 @@
+import telegram
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from django.shortcuts import render
+from .models import UserCalls
+
+bot = telegram.Bot(token='YOUR_TELEGRAM_BOT_TOKEN')
+
+def handle_message(update, context):
+    text = update.message.text
+    chat_id = update.message.chat_id
+
+    if "fat" in text.lower():
+        message = "You're not fat, you're just a little overweight!"
+        buttons = [['Thanks!', 'No, I'm really fat.']]
+        reply_markup = telegram.ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=True)
+        bot.send_message(chat_id=chat_id, text=message, reply_markup=reply_markup)
+
+    elif "dumb" in text.lower():
+        message = "You're not dumb, you just need to work on your critical thinking skills!"
+        buttons = [['Thanks!', 'No, I'm really dumb.']]
+        reply_markup = telegram.ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=True)
+        bot.send_message(chat_id=chat_id, text=message, reply_markup=reply_markup)
+
+    user, created = UserCalls.objects.get_or_create(telegram_id=chat_id)
+    user.calls += 1
+    user.save()
+
+def display_table(request):
+    users = UserCalls.objects.all()
+    return render(request, 'table.html', {'users': users})
+
+def handle_button(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    data = query.data
+
+    user, created = UserCalls.objects.get_or_create(telegram_id=chat_id)
+    user.calls += 1
+    user.save()
+
+    bot.send_message(chat_id=chat_id, text="Thanks for your response!")
+
+def start_bot():
+    updater = Updater(token='YOUR_TELEGRAM_BOT_TOKEN', use_context=True)
+    dispatcher = updater.dispatcher
+
+    message_handler = MessageHandler(Filters.text & (~Filters.command), handle_message)
+    button_handler = CallbackQueryHandler(handle_button)
+    dispatcher.add_handler(message_handler)
+    dispatcher.add_handler(button_handler)
+
+    updater.start_polling()
+
+start_bot()
+
